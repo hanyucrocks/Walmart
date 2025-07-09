@@ -11,7 +11,9 @@ export async function GET(request: NextRequest) {
 
   try {
     const recommendations = await smartPredictAI.generatePersonalizedRecommendations(userId)
-    return NextResponse.json({ recommendations })
+    // Add smart suggestions
+    const smartSuggestions = await smartPredictAI.getSmartSuggestions(userId)
+    return NextResponse.json({ recommendations, smartSuggestions })
   } catch (error) {
     console.error("Error generating recommendations:", error)
     return NextResponse.json({ error: "Failed to generate recommendations" }, { status: 500 })

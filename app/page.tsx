@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ShoppingCart, Search, Home, User, Plus, Clock, Zap, Star, ChevronRight } from "lucide-react"
+import { ShoppingCart, Search, Home, User, Plus, Clock, Zap, Star, ChevronRight, Minus, Trash } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -9,11 +9,48 @@ import { ChatAssistant } from "@/components/chat-assistant"
 import { useCart } from "@/contexts/cart-context"
 import { useToast } from "@/hooks/use-toast"
 import { ToastContainer } from "@/components/toast"
+import { CartModal } from "@/components/chat-assistant";
+import { AnimatePresence, motion } from "framer-motion";
+
+// Add types for recommendations, predictions, weeklyDealsData, and quickReorderItems
+interface Recommendation {
+  id: string;
+  name: string;
+  price: number;
+  image: string;
+  confidence: number;
+  reason: string;
+}
+
+interface Prediction {
+  item: string;
+  daysLeft: number;
+  confidence: string;
+  action: string;
+}
+
+interface WeeklyDeal {
+  id: string;
+  name: string;
+  originalPrice: number;
+  salePrice: number;
+  savings: number;
+  image: string;
+}
+
+interface QuickReorderItem {
+  id: string;
+  name: string;
+  price: number;
+  lastOrdered: string;
+  image: string;
+}
 
 export default function WalmartSmartPredict() {
   const [activeTab, setActiveTab] = useState("home")
-  const { state: cartState, addToCart } = useCart()
+  const { state: cartState, addToCart, removeFromCart, clearCart, updateQuantity } = useCart()
   const { toasts, addToast, removeToast } = useToast()
+  const [isCartOpen, setIsCartOpen] = useState(false);
 
   // Real user data
   const [user, setUser] = useState({
@@ -21,10 +58,11 @@ export default function WalmartSmartPredict() {
     name: "Sarah",
   })
 
-  const [recommendations, setRecommendations] = useState([])
-  const [predictions, setPredictions] = useState([])
-  const [weeklyDealsData, setWeeklyDealsData] = useState([])
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([])
+  const [predictions, setPredictions] = useState<Prediction[]>([])
+  const [weeklyDealsData, setWeeklyDealsData] = useState<WeeklyDeal[]>([])
   const [loading, setLoading] = useState(true)
+  const [smartSuggestions, setSmartSuggestions] = useState<any>(null)
 
   // Fetch AI-powered data
   useEffect(() => {
@@ -39,6 +77,7 @@ export default function WalmartSmartPredict() {
         if (recsRes.ok) {
           const recsData = await recsRes.json()
           setRecommendations(recsData.recommendations || [])
+          setSmartSuggestions(recsData.smartSuggestions || null)
         }
 
         if (predsRes.ok) {
@@ -113,7 +152,7 @@ export default function WalmartSmartPredict() {
   }, [user.id])
 
   // Quick reorder items with functionality
-  const quickReorderItems = [
+  const quickReorderItems: QuickReorderItem[] = [
     { id: "qr1", name: "Milk", price: 3.68, lastOrdered: "3 days ago", image: "/placeholder.svg?height=60&width=60" },
     { id: "qr2", name: "Bread", price: 1.98, lastOrdered: "5 days ago", image: "/placeholder.svg?height=60&width=60" },
     { id: "qr3", name: "Eggs", price: 2.78, lastOrdered: "1 week ago", image: "/placeholder.svg?height=60&width=60" },
@@ -171,11 +210,229 @@ export default function WalmartSmartPredict() {
     )
   }
 
+  // Add CartPage placeholder
+  function CartPage() {
+    const items = cartState.items || [];
+    const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    return (
+      <div className="p-4">
+        <h2 className="text-2xl font-bold mb-4">Your Cart</h2>
+        {items.length === 0 ? (
+          <div className="text-center text-gray-500 py-8">Your cart is empty.</div>
+        ) : (
+          <div className="space-y-4">
+            {items.map((item) => (
+              <div key={item.id} className="flex items-center justify-between border-b pb-2">
+                <div className="flex items-center gap-3">
+                  <img src={item.image || "/placeholder.svg"} alt={item.name} className="w-12 h-12 rounded" />
+                  <div>
+                    <div className="font-medium">{item.name}</div>
+                    <div className="text-xs text-gray-500">${item.price.toFixed(2)}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button size="icon" variant="ghost" onClick={() => updateQuantity(item.id, item.quantity - 1)} disabled={item.quantity <= 1}><Minus /></Button>
+                  <span className="w-6 text-center">{item.quantity}</span>
+                  <Button size="icon" variant="ghost" onClick={() => updateQuantity(item.id, item.quantity + 1)}><Plus /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => removeFromCart(item.id)}><Trash /></Button>
+                </div>
+              </div>
+            ))}
+            <div className="flex justify-between font-semibold pt-4">
+              <span>Subtotal</span>
+              <span>${subtotal.toFixed(2)}</span>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={clearCart}>Clear Cart</Button>
+              <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" disabled={items.length === 0}>Checkout</Button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function SearchTab({
+    recommendations,
+    weeklyDealsData,
+    quickReorderItems,
+    onAddToCart,
+  }: {
+    recommendations: Recommendation[];
+    weeklyDealsData: WeeklyDeal[];
+    quickReorderItems: QuickReorderItem[];
+    onAddToCart: (item: any, source: string) => void;
+  }) {
+    const [query, setQuery] = useState("");
+    const [results, setResults] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+      if (!query.trim()) {
+        setResults([]);
+        setError(null);
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      setError(null);
+      const controller = new AbortController();
+      fetch(`/api/search?query=${encodeURIComponent(query)}`, { signal: controller.signal })
+        .then(async (res) => {
+          if (!res.ok) throw new Error("API error");
+          const data = await res.json();
+          setResults(data.products || []);
+          setLoading(false);
+        })
+        .catch((err) => {
+          if (err.name === "AbortError") return;
+          setError("Failed to fetch search results. Showing local results.");
+          // Fallback to local search
+          const q = query.toLowerCase();
+          const recs = recommendations.filter((item) => item.name.toLowerCase().includes(q));
+          const deals = weeklyDealsData.filter((item) => item.name.toLowerCase().includes(q));
+          const quick = quickReorderItems.filter((item) => item.name.toLowerCase().includes(q));
+          setResults([
+            ...recs.map((item) => ({ ...item, _type: "recommendation" })),
+            ...deals.map((item) => ({ ...item, _type: "deal" })),
+            ...quick.map((item) => ({ ...item, _type: "quick" })),
+          ]);
+          setLoading(false);
+        });
+      return () => controller.abort();
+    }, [query, recommendations, weeklyDealsData, quickReorderItems]);
+
+    return (
+      <div className="p-4">
+        <h2 className="text-2xl font-bold mb-4">Search</h2>
+        <input
+          type="text"
+          className="w-full border rounded-md px-3 py-2 mb-4 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Search for products, deals, or past items..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        {loading && <div className="text-center text-gray-400 py-4">Searching...</div>}
+        {error && <div className="text-center text-red-500 py-2 text-sm">{error}</div>}
+        {query.trim() && !loading && (
+          <>
+            {results.length === 0 ? (
+              <div className="text-center text-gray-500 py-8">No results found.</div>
+            ) : (
+              <div className="space-y-4">
+                {results.map((item) => (
+                  <div key={item.id + (item._type || "api")}
+                    className="flex items-center justify-between border-b pb-2">
+                    <div className="flex items-center gap-3">
+                      <img src={item.image || "/placeholder.svg"} alt={item.name} className="w-12 h-12 rounded" />
+                      <div>
+                        <div className="font-medium">{item.name}</div>
+                        {item.price && <div className="text-xs text-gray-500">${item.price.toFixed(2)}</div>}
+                        {item.originalPrice && (
+                          <div className="text-xs text-gray-500 line-through">${item.originalPrice.toFixed(2)}</div>
+                        )}
+                        {item.lastOrdered && (
+                          <div className="text-xs text-gray-400">Last ordered: {item.lastOrdered}</div>
+                        )}
+                      </div>
+                    </div>
+                    <Button size="sm" onClick={() => onAddToCart(item, item._type || "api")}>Add to Cart</Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    );
+  }
+
+  function ProfileTab() {
+    // Mock user data
+    const user = {
+      name: "Sarah Johnson",
+      email: "sarah.johnson@email.com",
+      avatar: "/placeholder-user.jpg",
+      location: "San Francisco, CA",
+      preferences: ["Organic", "Vegetarian"],
+      dietary: ["Nut-free"],
+      householdSize: 3,
+    };
+    const favorites = [
+      { id: "1", name: "Milk", image: "/placeholder.svg?height=60&width=60" },
+      { id: "2", name: "Eggs", image: "/placeholder.svg?height=60&width=60" },
+    ];
+    const recentOrders = [
+      { id: "o1", name: "Bread", date: "2024-07-01", price: 1.98 },
+      { id: "o2", name: "Coffee", date: "2024-06-28", price: 8.98 },
+    ];
+    const aiInsights = [
+      "You may need to restock milk soon.",
+      "Great deal on organic bananas this week!",
+    ];
+    return (
+      <div className="p-4">
+        <div className="flex items-center gap-4 mb-4">
+          <img src={user.avatar} alt={user.name} className="w-16 h-16 rounded-full border" />
+          <div>
+            <div className="font-bold text-lg">{user.name}</div>
+            <div className="text-gray-500 text-sm">{user.email}</div>
+            <div className="text-gray-400 text-xs">{user.location}</div>
+          </div>
+        </div>
+        <div className="mb-4">
+          <div className="font-semibold mb-1">Preferences</div>
+          <div className="flex flex-wrap gap-2">
+            {user.preferences.map((p) => (
+              <span key={p} className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs">{p}</span>
+            ))}
+            {user.dietary.map((d) => (
+              <span key={d} className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs">{d}</span>
+            ))}
+          </div>
+          <div className="text-xs text-gray-400 mt-1">Household size: {user.householdSize}</div>
+        </div>
+        <div className="mb-4">
+          <div className="font-semibold mb-1">Favorites</div>
+          <div className="flex gap-3">
+            {favorites.map((item) => (
+              <div key={item.id} className="flex flex-col items-center">
+                <img src={item.image} alt={item.name} className="w-10 h-10 rounded mb-1" />
+                <span className="text-xs text-gray-700">{item.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="mb-4">
+          <div className="font-semibold mb-1">Recent Orders</div>
+          <div className="space-y-1">
+            {recentOrders.map((order) => (
+              <div key={order.id} className="flex justify-between text-sm text-gray-700">
+                <span>{order.name}</span>
+                <span>${order.price.toFixed(2)}</span>
+                <span className="text-gray-400 text-xs">{order.date}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="mb-4">
+          <div className="font-semibold mb-1">AI Insights</div>
+          <ul className="list-disc list-inside text-xs text-gray-600">
+            {aiInsights.map((insight, i) => (
+              <li key={i}>{insight}</li>
+            ))}
+          </ul>
+        </div>
+        <button className="w-full bg-red-500 hover:bg-red-600 text-white py-2 rounded mt-4">Logout</button>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 max-w-md mx-auto relative">
       {/* Toast Container */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
-
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 pt-12">
         <div className="flex items-center justify-between mb-4">
@@ -184,153 +441,216 @@ export default function WalmartSmartPredict() {
             <p className="text-blue-100 text-sm">Ready to make shopping smarter?</p>
           </div>
           <div className="relative">
-            <ShoppingCart className="w-6 h-6" />
-            {cartState.itemCount > 0 && (
-              <Badge className="absolute -top-2 -right-2 bg-yellow-400 text-blue-900 text-xs px-1.5 py-0.5">
-                {cartState.itemCount}
-              </Badge>
-            )}
+            <button onClick={() => setIsCartOpen(true)} className="relative">
+              <ShoppingCart className="w-6 h-6" />
+              {cartState.itemCount > 0 && (
+                <Badge className="absolute -top-2 -right-2 bg-yellow-400 text-blue-900 text-xs px-1.5 py-0.5">
+                  {cartState.itemCount}
+                </Badge>
+              )}
+            </button>
           </div>
         </div>
       </div>
-
-      {/* Main Content */}
-      <div className="pb-20 px-4 -mt-2">
-        {/* Smart Predictions */}
-        <Card className="mb-6 border-0 shadow-lg bg-gradient-to-r from-yellow-50 to-orange-50">
-          <CardContent className="p-4">
-            <div className="flex items-center mb-3">
-              <Zap className="w-5 h-5 text-yellow-600 mr-2" />
-              <h2 className="font-semibold text-gray-800">Smart Predictions</h2>
-            </div>
-            {predictions.map((prediction, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between py-2 border-b border-yellow-100 last:border-b-0"
-              >
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-800">
-                    You may run out of <span className="font-semibold text-blue-600">{prediction.item}</span> in{" "}
-                    {prediction.daysLeft} days
-                  </p>
-                  <p className="text-xs text-gray-600">{prediction.action}</p>
-                </div>
-                <Button
-                  size="sm"
-                  className="bg-blue-600 hover:bg-blue-700 text-xs px-3"
-                  onClick={() => handlePredictionAction(prediction)}
-                >
-                  Add to Cart
-                </Button>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        {/* AI Recommendations */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-800">Recommended for You</h2>
-            <Button variant="ghost" size="sm" className="text-blue-600">
-              View All <ChevronRight className="w-4 h-4 ml-1" />
-            </Button>
-          </div>
-          <div className="flex gap-4 overflow-x-auto pb-2">
-            {recommendations.map((product) => (
-              <Card key={product.id} className="min-w-[160px] border-0 shadow-md">
-                <CardContent className="p-3">
-                  <img
-                    src={product.image || "/placeholder.svg"}
-                    alt={product.name}
-                    className="w-full h-24 object-cover rounded-lg mb-2"
-                  />
-                  <h3 className="font-medium text-sm text-gray-800 mb-1 line-clamp-2">{product.name}</h3>
-                  <p className="text-lg font-bold text-blue-600 mb-1">${product.price}</p>
-                  <div className="flex items-center mb-2">
-                    <Star className="w-3 h-3 text-yellow-500 mr-1" />
-                    <span className="text-xs text-gray-600">{product.confidence}% match</span>
-                  </div>
-                  <p className="text-xs text-gray-500 mb-2">{product.reason}</p>
-                  <Button
-                    size="sm"
-                    className="w-full bg-yellow-400 hover:bg-yellow-500 text-blue-900 text-xs"
-                    onClick={() => handleAddToCart(product, "recommendations")}
-                  >
-                    Add to Cart
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-
-        {/* Quick Reorder */}
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">Quick Reorder</h2>
-          <div className="grid grid-cols-2 gap-3">
-            {quickReorderItems.map((item) => (
-              <Card key={item.id} className="border-0 shadow-md">
-                <CardContent className="p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-medium text-sm text-gray-800">{item.name}</h3>
-                    <Clock className="w-4 h-4 text-gray-400" />
-                  </div>
-                  <p className="text-sm font-bold text-blue-600 mb-1">${item.price}</p>
-                  <p className="text-xs text-gray-500 mb-2">Last: {item.lastOrdered}</p>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="w-full text-xs border-blue-200 text-blue-600 hover:bg-blue-50 bg-transparent"
-                    onClick={() => handleAddToCart(item, "quick-reorder")}
-                  >
-                    <Plus className="w-3 h-3 mr-1" />
-                    Reorder
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-
-        {/* Weekly Personalized Deals */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-800">Your Weekly Deals</h2>
-            <Badge className="bg-yellow-400 text-blue-900">Personalized</Badge>
-          </div>
-          <div className="space-y-3">
-            {weeklyDealsData.map((deal) => (
-              <Card key={deal.id} className="border-0 shadow-md">
-                <CardContent className="p-3">
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={deal.image || "/placeholder.svg"}
-                      alt={deal.name}
-                      className="w-16 h-16 object-cover rounded-lg"
-                    />
-                    <div className="flex-1">
-                      <h3 className="font-medium text-sm text-gray-800 mb-1">{deal.name}</h3>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-lg font-bold text-blue-600">${deal.salePrice}</span>
-                        <span className="text-sm text-gray-500 line-through">${deal.originalPrice}</span>
+      {/* Main Content with animated tab transitions */}
+      <div className="pb-20 px-4 -mt-2 min-h-[400px]">
+        <AnimatePresence mode="wait" initial={false}>
+          {activeTab === "cart" ? (
+            <motion.div
+              key="cart"
+              initial={{ x: 300, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -300, opacity: 0 }}
+              transition={{ duration: 0.18, ease: "easeInOut" }}
+            >
+              <CartPage />
+            </motion.div>
+          ) : activeTab === "search" ? (
+            <motion.div
+              key="search"
+              initial={{ x: 300, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -300, opacity: 0 }}
+              transition={{ duration: 0.18, ease: "easeInOut" }}
+            >
+              <SearchTab
+                recommendations={recommendations}
+                weeklyDealsData={weeklyDealsData}
+                quickReorderItems={quickReorderItems}
+                onAddToCart={handleAddToCart}
+              />
+            </motion.div>
+          ) : activeTab === "profile" ? (
+            <motion.div
+              key="profile"
+              initial={{ x: 300, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -300, opacity: 0 }}
+              transition={{ duration: 0.18, ease: "easeInOut" }}
+            >
+              <ProfileTab />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="home"
+              initial={{ x: 300, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -300, opacity: 0 }}
+              transition={{ duration: 0.18, ease: "easeInOut" }}
+            >
+              {/* Smart Suggestions */}
+              {smartSuggestions && (
+                <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
+                  <div className="font-semibold text-blue-800 mb-2">{smartSuggestions.message}</div>
+                  <div className="flex gap-4 overflow-x-auto pb-2">
+                    {smartSuggestions.accessories.map((acc: any) => (
+                      <div key={acc.accessory_name} className="min-w-[120px] bg-white rounded-lg shadow p-2 flex flex-col items-center">
+                        <img src={acc.image_url || "/placeholder.svg"} alt={acc.accessory_name} className="w-16 h-16 object-cover rounded mb-2" />
+                        <div className="font-medium text-sm text-gray-800 mb-1 text-center">{acc.accessory_name}</div>
+                        {acc.price && <div className="text-xs text-blue-600 font-bold mb-1">${acc.price}</div>}
+                        <Button size="sm" className="w-full" onClick={() => handleAddToCart(acc, "smart-suggestion")}>Add to Cart</Button>
                       </div>
-                      <Badge className="bg-green-100 text-green-800 text-xs">Save ${deal.savings}</Badge>
-                    </div>
-                    <Button
-                      size="sm"
-                      className="bg-yellow-400 hover:bg-yellow-500 text-blue-900"
-                      onClick={() => handleAddToCart(deal, "weekly-deals")}
-                    >
-                      Add
-                    </Button>
+                    ))}
                   </div>
+                </div>
+              )}
+              {/* Smart Predictions */}
+              <Card className="mb-6 border-0 shadow-lg bg-gradient-to-r from-yellow-50 to-orange-50">
+                <CardContent className="p-4">
+                  <div className="flex items-center mb-3">
+                    <Zap className="w-5 h-5 text-yellow-600 mr-2" />
+                    <h2 className="font-semibold text-gray-800">Smart Predictions</h2>
+                  </div>
+                  {predictions.map((prediction, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between py-2 border-b border-yellow-100 last:border-b-0"
+                    >
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-800">
+                          You may run out of <span className="font-semibold text-blue-600">{prediction.item}</span> in{" "}
+                          {prediction.daysLeft} days
+                        </p>
+                        <p className="text-xs text-gray-600">{prediction.action}</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        className="bg-blue-600 hover:bg-blue-700 text-xs px-3"
+                        onClick={() => handlePredictionAction(prediction)}
+                      >
+                        Add to Cart
+                      </Button>
+                    </div>
+                  ))}
                 </CardContent>
               </Card>
-            ))}
-          </div>
-        </div>
-      </div>
 
+              {/* AI Recommendations */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-gray-800">Recommended for You</h2>
+                  <Button variant="ghost" size="sm" className="text-blue-600">
+                    View All <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                </div>
+                <div className="flex gap-4 overflow-x-auto pb-2">
+                  {recommendations.map((product) => (
+                    <Card key={product.id} className="min-w-[160px] border-0 shadow-md">
+                      <CardContent className="p-3">
+                        <img
+                          src={product.image || "/placeholder.svg"}
+                          alt={product.name}
+                          className="w-full h-24 object-cover rounded-lg mb-2"
+                        />
+                        <h3 className="font-medium text-sm text-gray-800 mb-1 line-clamp-2">{product.name}</h3>
+                        <p className="text-lg font-bold text-blue-600 mb-1">${product.price}</p>
+                        <div className="flex items-center mb-2">
+                          <Star className="w-3 h-3 text-yellow-500 mr-1" />
+                          <span className="text-xs text-gray-600">{product.confidence}% match</span>
+                        </div>
+                        <p className="text-xs text-gray-500 mb-2">{product.reason}</p>
+                        <Button
+                          size="sm"
+                          className="w-full bg-yellow-400 hover:bg-yellow-500 text-blue-900 text-xs"
+                          onClick={() => handleAddToCart(product, "recommendations")}
+                        >
+                          Add to Cart
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+
+              {/* Quick Reorder */}
+              <div className="mb-6">
+                <h2 className="text-lg font-semibold text-gray-800 mb-4">Quick Reorder</h2>
+                <div className="grid grid-cols-2 gap-3">
+                  {quickReorderItems.map((item) => (
+                    <Card key={item.id} className="border-0 shadow-md">
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="font-medium text-sm text-gray-800">{item.name}</h3>
+                          <Clock className="w-4 h-4 text-gray-400" />
+                        </div>
+                        <p className="text-sm font-bold text-blue-600 mb-1">${item.price}</p>
+                        <p className="text-xs text-gray-500 mb-2">Last: {item.lastOrdered}</p>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full text-xs border-blue-200 text-blue-600 hover:bg-blue-50 bg-transparent"
+                          onClick={() => handleAddToCart(item, "quick-reorder")}
+                        >
+                          <Plus className="w-3 h-3 mr-1" />
+                          Reorder
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+
+              {/* Weekly Personalized Deals */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-gray-800">Your Weekly Deals</h2>
+                  <Badge className="bg-yellow-400 text-blue-900">Personalized</Badge>
+                </div>
+                <div className="space-y-3">
+                  {weeklyDealsData.map((deal) => (
+                    <Card key={deal.id} className="border-0 shadow-md">
+                      <CardContent className="p-3">
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={deal.image || "/placeholder.svg"}
+                            alt={deal.name}
+                            className="w-16 h-16 object-cover rounded-lg"
+                          />
+                          <div className="flex-1">
+                            <h3 className="font-medium text-sm text-gray-800 mb-1">{deal.name}</h3>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-lg font-bold text-blue-600">${deal.salePrice}</span>
+                              <span className="text-sm text-gray-500 line-through">${deal.originalPrice}</span>
+                            </div>
+                            <Badge className="bg-green-100 text-green-800 text-xs">Save ${deal.savings}</Badge>
+                          </div>
+                          <Button
+                            size="sm"
+                            className="bg-yellow-400 hover:bg-yellow-500 text-blue-900"
+                            onClick={() => handleAddToCart(deal, "weekly-deals")}
+                          >
+                            Add
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
       {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-200 px-4 py-2">
         <div className="flex justify-around">
@@ -343,19 +663,16 @@ export default function WalmartSmartPredict() {
             <button
               key={tab.id}
               onClick={() => {
-                setActiveTab(tab.id)
-                addToast({
-                  type: "info",
-                  title: `${tab.label} selected`,
-                  description: `Navigated to ${tab.label} section`,
-                })
+                setActiveTab(tab.id);
+                // Removed addToast for navigation
               }}
-              className={`flex flex-col items-center py-2 px-3 rounded-lg transition-colors ${
+              className={`relative flex flex-col items-center py-2 px-3 rounded-lg transition-colors ${
                 activeTab === tab.id ? "text-blue-600 bg-blue-50" : "text-gray-500 hover:text-gray-700"
               }`}
             >
               <tab.icon className="w-5 h-5 mb-1" />
               <span className="text-xs">{tab.label}</span>
+              {/* Only render badge for cart */}
               {tab.id === "cart" && cartState.itemCount > 0 && (
                 <Badge className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-1 py-0.5 rounded-full min-w-[16px] h-4 flex items-center justify-center">
                   {cartState.itemCount}
@@ -365,7 +682,8 @@ export default function WalmartSmartPredict() {
           ))}
         </div>
       </div>
-
+      {/* Cart Modal (for top-right button only) */}
+      <CartModal isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
       {/* Chat Assistant */}
       <ChatAssistant userId={user.id} userName={user.name} />
     </div>
