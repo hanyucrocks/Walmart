@@ -88,3 +88,16 @@ VALUES
   ('iPhone', 'Wireless Charger', '/placeholder-charger.jpg', 29.99),
   ('PlayStation', 'Extra Controller', '/placeholder-controller.jpg', 59.99),
   ('PlayStation', 'Popular Game', '/placeholder-game.jpg', 69.99);
+
+-- Create orders table to group purchases
+CREATE TABLE IF NOT EXISTS orders (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES user_profiles(id) ON DELETE CASCADE,
+  status TEXT DEFAULT 'pending',
+  total DECIMAL(10,2),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Add order_id to purchase_history if not exists
+ALTER TABLE purchase_history
+ADD COLUMN IF NOT EXISTS order_id UUID REFERENCES orders(id);

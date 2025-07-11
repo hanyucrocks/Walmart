@@ -223,6 +223,172 @@ export class SmartPredictAI {
       // Mood detection
       const detectedMood = this.detectMood(message);
 
+      // Intent: Add to cart (flexible matching)
+      // Improved regex: capture only the product name, not the trailing 'to the cart'
+      let addToCartProduct = null;
+      let addToCartMatch = lowerMsg.match(/(?:please |can you )?add (.+?) to (?:my )?cart/);
+      if (addToCartMatch) {
+        addToCartProduct = addToCartMatch[1];
+      } else {
+        // fallback: 'add milk' or 'add milk please'
+        addToCartMatch = lowerMsg.match(/(?:please |can you )?add (.+)$/);
+        if (addToCartMatch) {
+          addToCartProduct = addToCartMatch[1];
+        }
+      }
+      if (addToCartProduct) {
+        // Remove trailing 'to the cart', 'to cart', 'please', etc. if present
+        let productName = addToCartProduct.trim();
+        productName = productName.replace(/\s*to( the)? cart.*/g, '').replace(/\s*please$/g, '').trim();
+        // Fuzzy match in mockProducts (substring, case-insensitive)
+        let product = this.mockProducts.find(
+          p => p.product_name.toLowerCase() === productName.toLowerCase()
+        );
+        if (!product) {
+          product = this.mockProducts.find(
+            p => p.product_name.toLowerCase().includes(productName.toLowerCase())
+          );
+        }
+        // Try plural (remove trailing 's')
+        if (!product && productName.endsWith('s')) {
+          const singular = productName.slice(0, -1);
+          product = this.mockProducts.find(
+            p => p.product_name.toLowerCase().includes(singular.toLowerCase())
+          );
+        }
+        // Try common synonyms (simple mapping)
+        const synonyms: Record<string, string[]> = {
+          "chips": ["potato chips", "lays"],
+          "coke": ["coca-cola"],
+          "detergent": ["tide"],
+          // Add more as needed
+        };
+        if (!product && synonyms[productName.toLowerCase()]) {
+          for (const syn of synonyms[productName.toLowerCase()]) {
+            product = this.mockProducts.find(
+              p => p.product_name.toLowerCase().includes(syn)
+            );
+            if (product) break;
+          }
+        }
+        // If still not found, search user's purchase history
+        if (!product) {
+          const { data: purchases } = await supabase
+            .from("purchase_history")
+            .select("*")
+            .eq("user_id", userId);
+          if (purchases && purchases.length > 0) {
+            product = purchases.find(
+              p => p.product_name.toLowerCase() === productName.toLowerCase()
+            ) || purchases.find(
+              p => p.product_name.toLowerCase().includes(productName.toLowerCase())
+            );
+            // Try plural
+            if (!product && productName.endsWith('s')) {
+              const singular = productName.slice(0, -1);
+              product = purchases.find(
+                p => p.product_name.toLowerCase().includes(singular.toLowerCase())
+              );
+            }
+            // Try synonyms
+            if (!product && synonyms[productName.toLowerCase()]) {
+              for (const syn of synonyms[productName.toLowerCase()]) {
+                product = purchases.find(
+                  p => p.product_name.toLowerCase().includes(syn)
+                );
+                if (product) break;
+              }
+            }
+          }
+        }
+        if (product) {
+          return new Response(JSON.stringify({ type: "add_to_cart", product }), { headers: { "Content-Type": "application/json" } });
+        } else {
+          return new Response(JSON.stringify({ type: "add_to_cart", error: `Product '${productName}' not found.` }), { headers: { "Content-Type": "application/json" } });
+        }
+      }
+
+      // Intent: Remove from cart (flexible matching)
+      const removeFromCartMatch = lowerMsg.match(/(?:please |can you )?remove (.+?) from (my )?cart|(?:please |can you )?remove (.+)$/);
+      let removeFromCartProduct = null;
+      if (removeFromCartMatch) {
+        removeFromCartProduct = removeFromCartMatch[1] || removeFromCartMatch[3];
+      }
+      if (removeFromCartProduct) {
+        const productName = removeFromCartProduct.trim();
+        // Fuzzy match in mockProducts (substring, case-insensitive)
+        let product = this.mockProducts.find(
+          p => p.product_name.toLowerCase() === productName.toLowerCase()
+        );
+        if (!product) {
+          product = this.mockProducts.find(
+            p => p.product_name.toLowerCase().includes(productName.toLowerCase())
+          );
+        }
+        // Try plural (remove trailing 's')
+        if (!product && productName.endsWith('s')) {
+          const singular = productName.slice(0, -1);
+          product = this.mockProducts.find(
+            p => p.product_name.toLowerCase().includes(singular.toLowerCase())
+          );
+        }
+        // Try common synonyms (simple mapping)
+        const synonyms: Record<string, string[]> = {
+          "chips": ["potato chips", "lays"],
+          "coke": ["coca-cola"],
+          "detergent": ["tide"],
+          // Add more as needed
+        };
+        if (!product && synonyms[productName.toLowerCase()]) {
+          for (const syn of synonyms[productName.toLowerCase()]) {
+            product = this.mockProducts.find(
+              p => p.product_name.toLowerCase().includes(syn)
+            );
+            if (product) break;
+          }
+        }
+        // If still not found, search user's purchase history
+        if (!product) {
+          const { data: purchases } = await supabase
+            .from("purchase_history")
+            .select("*")
+            .eq("user_id", userId);
+          if (purchases && purchases.length > 0) {
+            product = purchases.find(
+              p => p.product_name.toLowerCase() === productName.toLowerCase()
+            ) || purchases.find(
+              p => p.product_name.toLowerCase().includes(productName.toLowerCase())
+            );
+            // Try plural
+            if (!product && productName.endsWith('s')) {
+              const singular = productName.slice(0, -1);
+              product = purchases.find(
+                p => p.product_name.toLowerCase().includes(singular.toLowerCase())
+              );
+            }
+            // Try synonyms
+            if (!product && synonyms[productName.toLowerCase()]) {
+              for (const syn of synonyms[productName.toLowerCase()]) {
+                product = purchases.find(
+                  p => p.product_name.toLowerCase().includes(syn)
+                );
+                if (product) break;
+              }
+            }
+          }
+        }
+        if (product) {
+          return new Response(JSON.stringify({ type: "remove_from_cart", product }), { headers: { "Content-Type": "application/json" } });
+        } else {
+          return new Response(JSON.stringify({ type: "remove_from_cart", error: `Product '${productName}' not found.` }), { headers: { "Content-Type": "application/json" } });
+        }
+      }
+
+      // Intent: Checkout (e.g., "Checkout", "Place my order")
+      if (lowerMsg === "checkout" || lowerMsg === "place my order" || lowerMsg === "place order") {
+        return new Response(JSON.stringify({ type: "checkout" }), { headers: { "Content-Type": "application/json" } });
+      }
+
       // Intent: Add to favorites (e.g., "Add milk to my favorites")
       const addFavMatch = lowerMsg.match(/^add (.+) to my favorites?$/);
       if (addFavMatch) {
@@ -242,6 +408,24 @@ export class SmartPredictAI {
         return await this.showFavorites(userId);
       }
 
+      // Intent: Show cart contents
+      if (
+        lowerMsg.includes("show my cart") ||
+        lowerMsg.includes("what's in my cart") ||
+        lowerMsg.includes("cart contents") ||
+        lowerMsg.includes("my cart")
+      ) {
+        // Fetch cart from persistent storage
+        const { data: items, error } = await supabase
+          .from("cart_items")
+          .select("*")
+          .eq("user_id", userId);
+        if (error) {
+          return new Response(JSON.stringify({ type: "cart_contents", error: error.message }), { headers: { "Content-Type": "application/json" } });
+        }
+        return new Response(JSON.stringify({ type: "cart_contents", items: items || [] }), { headers: { "Content-Type": "application/json" } });
+      }
+
       // Intent: Set preference (e.g., "Set my preference to organic")
       const setPrefMatch = lowerMsg.match(/^set my preference to (.+)$/);
       if (setPrefMatch) {
@@ -249,9 +433,10 @@ export class SmartPredictAI {
         return await this.setPreference(userId, preference);
       }
 
-      // Intent: Find product (e.g., "Find Milk")
-      if (lowerMsg.startsWith("find ")) {
-        const productName = message.slice(5).trim();
+      // Intent: Find product (e.g., "Find Milk", "Find milk for me", "Find milk please")
+      const findMatch = lowerMsg.match(/^find (.+?)( for me| please|$)/);
+      if (findMatch) {
+        const productName = findMatch[1].trim();
         return this.handleProductSearch(userId, productName);
       }
 
@@ -382,6 +567,7 @@ export class SmartPredictAI {
     { id: "cheetos-1", product_name: "Cheetos", product_category: "Snacks", price: 2.49, image: "/placeholder.svg", },
     { id: "lays-1", product_name: "Lay's Potato Chips", product_category: "Snacks", price: 2.98, image: "/placeholder.svg", },
     { id: "milk-1", product_name: "Whole Milk", product_category: "Dairy", price: 3.68, image: "/placeholder.svg", },
+    { id: "iphone-16", product_name: "iPhone 16", product_category: "Electronics", price: 999.99, image: "/placeholder-iphone16.jpg" },
     // ...add more as needed
   ];
   async handleProductSearch(userId: string, productName: string) {
@@ -514,17 +700,29 @@ export class SmartPredictAI {
   }
 
   async getSmartSuggestions(userId: string) {
-    // DEMO: Always show iPhone smart suggestion for demo purposes
-    const { data: iphoneAccessories } = await supabase
-      .from("product_accessories")
-      .select("accessory_name, image_url, price")
-      .eq("anchor_product_name", "iPhone");
-    if (iphoneAccessories && iphoneAccessories.length > 0) {
-      return {
-        anchor: "iPhone",
-        message: `You bought an iPhone recently. Here are some products to enhance your experience even better.`,
-        accessories: iphoneAccessories,
-      };
+    // Get the user's most recent purchase
+    const { data: recentPurchases } = await supabase
+      .from("purchase_history")
+      .select("product_name, purchase_date")
+      .eq("user_id", userId)
+      .order("purchase_date", { ascending: false })
+      .limit(3);
+    if (!recentPurchases || recentPurchases.length === 0) {
+      return null;
+    }
+    // Try to find accessories for any of the recent purchases
+    for (const purchase of recentPurchases) {
+      const { data: accessories } = await supabase
+        .from("product_accessories")
+        .select("accessory_name, image_url, price")
+        .eq("anchor_product_name", purchase.product_name);
+      if (accessories && accessories.length > 0) {
+        return {
+          anchor: purchase.product_name,
+          message: `You bought a ${purchase.product_name} recently. Here are some products to enhance your experience even better.`,
+          accessories,
+        };
+      }
     }
     return null;
   }

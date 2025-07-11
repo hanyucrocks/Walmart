@@ -20,7 +20,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <CartProvider>{children}</CartProvider>
+        <CartProvider userId="550e8400-e29b-41d4-a716-446655440000">{children}</CartProvider>
       </body>
     </html>
   )

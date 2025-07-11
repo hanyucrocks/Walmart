@@ -165,37 +165,52 @@ export default function WalmartSmartPredict() {
     },
   ]
 
-  const handleAddToCart = (item: any, source: string) => {
-    addToCart({
-      id: item.id,
-      name: item.name,
-      price: item.salePrice || item.price,
-      image: item.image,
+  const handleAddToCart = async (item: any, source: string) => {
+    const id = item.id || `${item.name || item.product_name}`;
+    const name = item.name || item.product_name || 'Unnamed Product';
+    const price = typeof item.salePrice === 'number' ? item.salePrice : (typeof item.price === 'number' ? item.price : undefined);
+    const image = typeof item.image === 'string' ? item.image : undefined;
+    if (typeof price !== 'number' || isNaN(price) || price <= 0) {
+      addToast({
+        type: "error",
+        title: "Invalid product",
+        description: `Cannot add '${name}' to cart: missing or invalid price.`,
+      });
+      return;
+    }
+    await addToCart({
+      id,
+      name,
+      price,
+      image,
     })
-
     addToast({
       type: "success",
       title: "Added to cart!",
-      description: `${item.name} has been added to your cart.`,
+      description: `${name} has been added to your cart.`,
     })
-
     // Track the action (you could send this to analytics)
-    console.log(`Added ${item.name} to cart from ${source}`)
+    console.log(`Added ${name} to cart from ${source}`)
   }
 
-  const handlePredictionAction = (prediction: any) => {
+  const handlePredictionAction = async (prediction: any) => {
     // Simulate adding predicted item to cart
-    addToCart({
-      id: `pred-${Date.now()}`,
-      name: prediction.item,
-      price: Math.random() * 10 + 5, // Random price for demo
-      image: "/placeholder.svg?height=60&width=60",
+    // Use a deterministic id and price for SSR consistency
+    const deterministicId = `pred-${prediction.item.replace(/\s+/g, '-').toLowerCase()}`;
+    const deterministicPrice = 9.99; // Use a fixed price for demo
+    const name = prediction.item || 'Unnamed Product';
+    const image = "/placeholder.svg?height=60&width=60";
+    await addToCart({
+      id: deterministicId,
+      name,
+      price: deterministicPrice,
+      image,
     })
 
     addToast({
       type: "success",
       title: "Smart prediction added!",
-      description: `${prediction.item} has been added to your cart.`,
+      description: `${name} has been added to your cart.`,
     })
   }
 
@@ -214,15 +229,46 @@ export default function WalmartSmartPredict() {
   function CartPage() {
     const items = cartState.items || [];
     const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const [isCheckingOut, setIsCheckingOut] = useState(false);
+    const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+    const handleCheckout = async () => {
+      if (!user.id || items.length === 0) return;
+      setIsCheckingOut(true);
+      setToast(null);
+      try {
+        const response = await fetch("/api/checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: user.id, cartItems: items }),
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+          await clearCart();
+          setToast({ type: 'success', message: 'Order placed successfully!' });
+          // Optionally refresh Smart Suggestions/order history here
+        } else {
+          setToast({ type: 'error', message: data.error || 'Checkout failed.' });
+        }
+      } catch (err) {
+        setToast({ type: 'error', message: 'Checkout failed. Please try again.' });
+      } finally {
+        setIsCheckingOut(false);
+      }
+    };
+
     return (
       <div className="p-4">
         <h2 className="text-2xl font-bold mb-4">Your Cart</h2>
+        {toast && (
+          <div className={`my-2 text-center rounded p-2 ${toast.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{toast.message}</div>
+        )}
         {items.length === 0 ? (
           <div className="text-center text-gray-500 py-8">Your cart is empty.</div>
         ) : (
           <div className="space-y-4">
             {items.map((item) => (
-              <div key={item.id} className="flex items-center justify-between border-b pb-2">
+              <div key={item.id || (item.name + '-' + item.price)} className="flex items-center justify-between border-b pb-2">
                 <div className="flex items-center gap-3">
                   <img src={item.image || "/placeholder.svg"} alt={item.name} className="w-12 h-12 rounded" />
                   <div>
@@ -244,7 +290,7 @@ export default function WalmartSmartPredict() {
             </div>
             <div className="flex gap-2">
               <Button variant="outline" className="flex-1" onClick={clearCart}>Clear Cart</Button>
-              <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" disabled={items.length === 0}>Checkout</Button>
+              <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" disabled={items.length === 0 || isCheckingOut} onClick={handleCheckout}>{isCheckingOut ? 'Processing...' : 'Checkout'}</Button>
             </div>
           </div>
         )}
@@ -327,7 +373,7 @@ export default function WalmartSmartPredict() {
                     <div className="flex items-center gap-3">
                       <img src={item.image || "/placeholder.svg"} alt={item.name} className="w-12 h-12 rounded" />
                       <div>
-                        <div className="font-medium">{item.name}</div>
+                        <div className="font-medium">{item.name || item.product_name}</div>
                         {item.price && <div className="text-xs text-gray-500">${item.price.toFixed(2)}</div>}
                         {item.originalPrice && (
                           <div className="text-xs text-gray-500 line-through">${item.originalPrice.toFixed(2)}</div>
@@ -683,7 +729,7 @@ export default function WalmartSmartPredict() {
         </div>
       </div>
       {/* Cart Modal (for top-right button only) */}
-      <CartModal isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+      <CartModal isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} userId={user.id} />
       {/* Chat Assistant */}
       <ChatAssistant userId={user.id} userName={user.name} />
     </div>
