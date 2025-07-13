@@ -91,7 +91,7 @@ export class SmartPredictAI {
           id: 1,
           name: "Great Value Organic Bananas",
           price: 2.48,
-          image: "/placeholder.svg?height=120&width=120",
+          image: "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=120&h=120&fit=crop&crop=center",
           confidence: 95,
           reason: "You buy these every week",
         },
@@ -99,7 +99,7 @@ export class SmartPredictAI {
           id: 2,
           name: "Tide Laundry Detergent",
           price: 12.97,
-          image: "/placeholder.svg?height=120&width=120",
+          image: "https://images.unsplash.com/photo-1582735689369-4fe89db7114c?w=120&h=120&fit=crop&crop=center",
           confidence: 88,
           reason: "Based on your purchase history",
         },
@@ -107,7 +107,7 @@ export class SmartPredictAI {
           id: 3,
           name: "Honey Nut Cheerios",
           price: 4.98,
-          image: "/placeholder.svg?height=120&width=120",
+          image: "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=120&h=120&fit=crop&crop=center",
           confidence: 82,
           reason: "Popular with similar shoppers",
         },
@@ -304,7 +304,11 @@ export class SmartPredictAI {
         if (product) {
           return new Response(JSON.stringify({ type: "add_to_cart", product }), { headers: { "Content-Type": "application/json" } });
         } else {
-          return new Response(JSON.stringify({ type: "add_to_cart", error: `Product '${productName}' not found.` }), { headers: { "Content-Type": "application/json" } });
+          return new Response(JSON.stringify({ 
+            type: "product_not_available", 
+            productName: productName,
+            message: `Sorry, ${productName} is not available in our products.`
+          }), { headers: { "Content-Type": "application/json" } });
         }
       }
 
@@ -380,7 +384,11 @@ export class SmartPredictAI {
         if (product) {
           return new Response(JSON.stringify({ type: "remove_from_cart", product }), { headers: { "Content-Type": "application/json" } });
         } else {
-          return new Response(JSON.stringify({ type: "remove_from_cart", error: `Product '${productName}' not found.` }), { headers: { "Content-Type": "application/json" } });
+          return new Response(JSON.stringify({ 
+            type: "product_not_available", 
+            productName: productName,
+            message: `Sorry, ${productName} is not available in our products.`
+          }), { headers: { "Content-Type": "application/json" } });
         }
       }
 
@@ -564,11 +572,17 @@ export class SmartPredictAI {
   // Add a simple product search handler
   // Add a mock product catalog for fallback search
   mockProducts = [
-    { id: "cheetos-1", product_name: "Cheetos", product_category: "Snacks", price: 2.49, image: "/placeholder.svg", },
-    { id: "lays-1", product_name: "Lay's Potato Chips", product_category: "Snacks", price: 2.98, image: "/placeholder.svg", },
-    { id: "milk-1", product_name: "Whole Milk", product_category: "Dairy", price: 3.68, image: "/placeholder.svg", },
-    { id: "iphone-16", product_name: "iPhone 16", product_category: "Electronics", price: 999.99, image: "/placeholder-iphone16.jpg" },
-    // ...add more as needed
+    { id: "cheetos-1", product_name: "Cheetos", product_category: "Snacks", price: 2.49, image: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=200&h=200&fit=crop&crop=center", },
+    { id: "lays-1", product_name: "Lay's Potato Chips", product_category: "Snacks", price: 2.98, image: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=200&h=200&fit=crop&crop=center", },
+    { id: "milk-1", product_name: "Whole Milk", product_category: "Dairy", price: 3.68, image: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=200&h=200&fit=crop&crop=center", },
+    { id: "bread-1", product_name: "Wonder Bread", product_category: "Bakery", price: 1.98, image: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=200&h=200&fit=crop&crop=center", },
+    { id: "eggs-1", product_name: "Fresh Eggs", product_category: "Dairy", price: 2.78, image: "https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?w=200&h=200&fit=crop&crop=center", },
+    { id: "coffee-1", product_name: "Coffee Beans", product_category: "Beverages", price: 8.98, image: "https://images.unsplash.com/photo-1447933601403-0c6688de566e?w=200&h=200&fit=crop&crop=center", },
+    { id: "coke-1", product_name: "Coca-Cola 12-pack", product_category: "Beverages", price: 4.98, image: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=200&h=200&fit=crop&crop=center", },
+    { id: "tide-1", product_name: "Tide Laundry Detergent", product_category: "Household", price: 12.97, image: "https://images.unsplash.com/photo-1582735689369-4fe89db7114c?w=200&h=200&fit=crop&crop=center", },
+    { id: "bananas-1", product_name: "Great Value Organic Bananas", product_category: "Produce", price: 2.48, image: "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=200&h=200&fit=crop&crop=center", },
+    { id: "cheerios-1", product_name: "Honey Nut Cheerios", product_category: "Breakfast", price: 4.98, image: "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=200&h=200&fit=crop&crop=center", },
+    { id: "iphone-16", product_name: "iPhone 16", product_category: "Electronics", price: 999.99, image: "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=200&h=200&fit=crop&crop=center" },
   ];
   async handleProductSearch(userId: string, productName: string) {
     // Search purchase history for the product
@@ -596,9 +610,13 @@ export class SmartPredictAI {
       );
     }
 
-    // If not found, fallback to LLM for a generic answer
+    // If not found, return not available message
     return new Response(
-      JSON.stringify({ type: "product_search", result: null, message: `No product found for '${productName}'.` }),
+      JSON.stringify({ 
+        type: "product_not_available", 
+        productName: productName,
+        message: `Sorry, ${productName} is not available in our products.`
+      }),
       { headers: { "Content-Type": "application/json" } }
     );
   }
@@ -683,7 +701,7 @@ export class SmartPredictAI {
           originalPrice: 6.98,
           salePrice: 4.98,
           savings: 2.0,
-          image: "/placeholder.svg?height=80&width=80",
+          image: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=80&h=80&fit=crop&crop=center",
           deal_reason: "Popular choice",
         },
         {
@@ -692,7 +710,7 @@ export class SmartPredictAI {
           originalPrice: 4.48,
           salePrice: 2.98,
           savings: 1.5,
-          image: "/placeholder.svg?height=80&width=80",
+          image: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=80&h=80&fit=crop&crop=center",
           deal_reason: "Great snack deal",
         },
       ]
@@ -737,7 +755,11 @@ export class SmartPredictAI {
       .ilike("product_name", `%${productName}%`)
       .order("purchase_date", { ascending: false });
     if (!purchases || purchases.length === 0) {
-      return new Response(`I couldn't find '${productName}' in your purchase history.`, { status: 200 });
+      return new Response(JSON.stringify({ 
+        type: "product_not_available", 
+        productName: productName,
+        message: `Sorry, ${productName} is not available in our products.`
+      }), { headers: { "Content-Type": "application/json" } });
     }
     const productId = purchases[0].id;
     // Add to favorites
@@ -755,7 +777,11 @@ export class SmartPredictAI {
       .ilike("product_name", `%${productName}%`)
       .order("purchase_date", { ascending: false });
     if (!purchases || purchases.length === 0) {
-      return new Response(`I couldn't find '${productName}' in your purchase history.`, { status: 200 });
+      return new Response(JSON.stringify({ 
+        type: "product_not_available", 
+        productName: productName,
+        message: `Sorry, ${productName} is not available in our products.`
+      }), { headers: { "Content-Type": "application/json" } });
     }
     const productId = purchases[0].id;
     // Remove from favorites

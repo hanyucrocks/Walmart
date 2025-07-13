@@ -331,6 +331,18 @@ export function ChatAssistant({ userId, userName }: ChatAssistantProps) {
             ]);
             setIsLoading(false);
             return;
+          } else if (parsed.type === 'product_not_available') {
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: generateUniqueId(),
+                role: "assistant",
+                content: parsed.message,
+                timestamp: new Date(),
+              },
+            ]);
+            setIsLoading(false);
+            return;
           } else if (
             parsed.type === 'product_search' ||
             parsed.type === 'weekly_deals' ||
@@ -475,6 +487,19 @@ export function ChatAssistant({ userId, userName }: ChatAssistantProps) {
                 description: `Add items to your cart before checking out.`,
               });
             }
+            commerceHandled = true;
+          } else if (parsed.type === 'product_not_available') {
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: generateUniqueId(),
+                role: "assistant",
+                content: parsed.message,
+                timestamp: new Date(),
+              },
+            ]);
+            setIsLoading(false);
+            messageAdded = true;
             commerceHandled = true;
           } else if (
             parsed.type === 'product_search' ||

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ShoppingCart, Search, Home, User, Plus, Clock, Zap, Star, ChevronRight, Minus, Trash } from "lucide-react"
+import { ShoppingCart, Search, Home, User, Plus, Clock, Zap, Star, ChevronRight, Minus, Trash, Heart, Package, TrendingUp, Award, Settings, LogOut, MapPin, Users, Bell } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -99,7 +99,7 @@ export default function WalmartSmartPredict() {
             id: "1",
             name: "Great Value Organic Bananas",
             price: 2.48,
-            image: "/placeholder.svg?height=120&width=120",
+            image: "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=120&h=120&fit=crop&crop=center",
             confidence: 95,
             reason: "You buy these every week",
           },
@@ -107,7 +107,7 @@ export default function WalmartSmartPredict() {
             id: "2",
             name: "Tide Laundry Detergent",
             price: 12.97,
-            image: "/placeholder.svg?height=120&width=120",
+            image: "https://images.unsplash.com/photo-1582735689369-4fe89db7114c?w=120&h=120&fit=crop&crop=center",
             confidence: 88,
             reason: "Based on your purchase history",
           },
@@ -133,7 +133,7 @@ export default function WalmartSmartPredict() {
             originalPrice: 6.98,
             salePrice: 4.98,
             savings: 2.0,
-            image: "/placeholder.svg?height=80&width=80",
+            image: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=80&h=80&fit=crop&crop=center",
           },
           {
             id: "4",
@@ -141,7 +141,7 @@ export default function WalmartSmartPredict() {
             originalPrice: 4.48,
             salePrice: 2.98,
             savings: 1.5,
-            image: "/placeholder.svg?height=80&width=80",
+            image: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=80&h=80&fit=crop&crop=center",
           },
         ])
         setLoading(false)
@@ -153,15 +153,15 @@ export default function WalmartSmartPredict() {
 
   // Quick reorder items with functionality
   const quickReorderItems: QuickReorderItem[] = [
-    { id: "qr1", name: "Milk", price: 3.68, lastOrdered: "3 days ago", image: "/placeholder.svg?height=60&width=60" },
-    { id: "qr2", name: "Bread", price: 1.98, lastOrdered: "5 days ago", image: "/placeholder.svg?height=60&width=60" },
-    { id: "qr3", name: "Eggs", price: 2.78, lastOrdered: "1 week ago", image: "/placeholder.svg?height=60&width=60" },
+    { id: "qr1", name: "Milk", price: 3.68, lastOrdered: "3 days ago", image: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=60&h=60&fit=crop&crop=center" },
+    { id: "qr2", name: "Bread", price: 1.98, lastOrdered: "5 days ago", image: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=60&h=60&fit=crop&crop=center" },
+    { id: "qr3", name: "Eggs", price: 2.78, lastOrdered: "1 week ago", image: "https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?w=60&h=60&fit=crop&crop=center" },
     {
       id: "qr4",
       name: "Coffee",
       price: 8.98,
       lastOrdered: "2 weeks ago",
-      image: "/placeholder.svg?height=60&width=60",
+      image: "https://images.unsplash.com/photo-1447933601403-0c6688de566e?w=60&h=60&fit=crop&crop=center",
     },
   ]
 
@@ -351,14 +351,20 @@ export default function WalmartSmartPredict() {
 
     return (
       <div className="p-4">
-        <h2 className="text-2xl font-bold mb-4">Search</h2>
-        <input
-          type="text"
-          className="w-full border rounded-md px-3 py-2 mb-4 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Search for products, deals, or past items..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
+        <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+          <Search className="w-6 h-6 text-blue-600" />
+          Search
+        </h2>
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <input
+            type="text"
+            className="w-full border rounded-md pl-10 pr-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Search for products, deals, or past items..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
         {loading && <div className="text-center text-gray-400 py-4">Searching...</div>}
         {error && <div className="text-center text-red-500 py-2 text-sm">{error}</div>}
         {query.trim() && !loading && (
@@ -406,8 +412,8 @@ export default function WalmartSmartPredict() {
       householdSize: 3,
     };
     const favorites = [
-      { id: "1", name: "Milk", image: "/placeholder.svg?height=60&width=60" },
-      { id: "2", name: "Eggs", image: "/placeholder.svg?height=60&width=60" },
+      { id: "1", name: "Milk", image: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=60&h=60&fit=crop&crop=center" },
+      { id: "2", name: "Eggs", image: "https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?w=60&h=60&fit=crop&crop=center" },
     ];
     const recentOrders = [
       { id: "o1", name: "Bread", date: "2024-07-01", price: 1.98 },
@@ -420,57 +426,104 @@ export default function WalmartSmartPredict() {
     return (
       <div className="p-4">
         <div className="flex items-center gap-4 mb-4">
-          <img src={user.avatar} alt={user.name} className="w-16 h-16 rounded-full border" />
+          <div className="relative">
+            <img src={user.avatar} alt={user.name} className="w-16 h-16 rounded-full border-2 border-blue-200" />
+            <div className="absolute -bottom-1 -right-1 bg-green-500 w-4 h-4 rounded-full border-2 border-white"></div>
+          </div>
           <div>
-            <div className="font-bold text-lg">{user.name}</div>
-            <div className="text-gray-500 text-sm">{user.email}</div>
-            <div className="text-gray-400 text-xs">{user.location}</div>
+            <div className="font-bold text-lg flex items-center gap-2">
+              {user.name}
+              <Award className="w-4 h-4 text-yellow-500" />
+            </div>
+            <div className="text-gray-500 text-sm flex items-center gap-1">
+              <User className="w-3 h-3" />
+              {user.email}
+            </div>
+            <div className="text-gray-400 text-xs flex items-center gap-1">
+              <MapPin className="w-3 h-3" />
+              {user.location}
+            </div>
           </div>
         </div>
         <div className="mb-4">
-          <div className="font-semibold mb-1">Preferences</div>
+          <div className="font-semibold mb-1 flex items-center gap-2">
+            <Settings className="w-4 h-4 text-blue-600" />
+            Preferences
+          </div>
           <div className="flex flex-wrap gap-2">
             {user.preferences.map((p) => (
-              <span key={p} className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs">{p}</span>
+              <span key={p} className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs flex items-center gap-1">
+                <Star className="w-3 h-3" />
+                {p}
+              </span>
             ))}
             {user.dietary.map((d) => (
-              <span key={d} className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs">{d}</span>
+              <span key={d} className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs flex items-center gap-1">
+                <Heart className="w-3 h-3" />
+                {d}
+              </span>
             ))}
           </div>
-          <div className="text-xs text-gray-400 mt-1">Household size: {user.householdSize}</div>
+          <div className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+            <Users className="w-3 h-3" />
+            Household size: {user.householdSize}
+          </div>
         </div>
         <div className="mb-4">
-          <div className="font-semibold mb-1">Favorites</div>
+          <div className="font-semibold mb-1 flex items-center gap-2">
+            <Heart className="w-4 h-4 text-red-500" />
+            Favorites
+          </div>
           <div className="flex gap-3">
             {favorites.map((item) => (
               <div key={item.id} className="flex flex-col items-center">
-                <img src={item.image} alt={item.name} className="w-10 h-10 rounded mb-1" />
+                <div className="relative">
+                  <img src={item.image} alt={item.name} className="w-10 h-10 rounded mb-1 border-2 border-red-200" />
+                  <Heart className="w-3 h-3 text-red-500 absolute -top-1 -right-1 bg-white rounded-full" />
+                </div>
                 <span className="text-xs text-gray-700">{item.name}</span>
               </div>
             ))}
           </div>
         </div>
         <div className="mb-4">
-          <div className="font-semibold mb-1">Recent Orders</div>
+          <div className="font-semibold mb-1 flex items-center gap-2">
+            <Package className="w-4 h-4 text-blue-600" />
+            Recent Orders
+          </div>
           <div className="space-y-1">
             {recentOrders.map((order) => (
-              <div key={order.id} className="flex justify-between text-sm text-gray-700">
-                <span>{order.name}</span>
-                <span>${order.price.toFixed(2)}</span>
-                <span className="text-gray-400 text-xs">{order.date}</span>
+              <div key={order.id} className="flex justify-between text-sm text-gray-700 items-center">
+                <div className="flex items-center gap-2">
+                  <Package className="w-3 h-3 text-gray-400" />
+                  <span>{order.name}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">${order.price.toFixed(2)}</span>
+                  <span className="text-gray-400 text-xs">{order.date}</span>
+                </div>
               </div>
             ))}
           </div>
         </div>
         <div className="mb-4">
-          <div className="font-semibold mb-1">AI Insights</div>
+          <div className="font-semibold mb-1 flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-green-600" />
+            AI Insights
+          </div>
           <ul className="list-disc list-inside text-xs text-gray-600">
             {aiInsights.map((insight, i) => (
-              <li key={i}>{insight}</li>
+              <li key={i} className="flex items-start gap-2">
+                <Bell className="w-3 h-3 text-green-500 mt-0.5 flex-shrink-0" />
+                <span>{insight}</span>
+              </li>
             ))}
           </ul>
         </div>
-        <button className="w-full bg-red-500 hover:bg-red-600 text-white py-2 rounded mt-4">Logout</button>
+        <button className="w-full bg-red-500 hover:bg-red-600 text-white py-2 rounded mt-4 flex items-center justify-center gap-2">
+          <LogOut className="w-4 h-4" />
+          Logout
+        </button>
       </div>
     );
   }
@@ -482,9 +535,14 @@ export default function WalmartSmartPredict() {
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 pt-12">
         <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-xl font-semibold">Good morning, {user.name}! 👋</h1>
-            <p className="text-blue-100 text-sm">Ready to make shopping smarter?</p>
+          <div className="flex items-center gap-3">
+            <div className="bg-white rounded-lg p-2">
+              <div className="text-blue-600 font-bold text-lg">W</div>
+            </div>
+            <div>
+              <h1 className="text-xl font-semibold">Good morning, {user.name}! 👋</h1>
+              <p className="text-blue-100 text-sm">Ready to make shopping smarter?</p>
+            </div>
           </div>
           <div className="relative">
             <button onClick={() => setIsCartOpen(true)} className="relative">
@@ -547,7 +605,10 @@ export default function WalmartSmartPredict() {
               {/* Smart Suggestions */}
               {smartSuggestions && (
                 <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
-                  <div className="font-semibold text-blue-800 mb-2">{smartSuggestions.message}</div>
+                  <div className="font-semibold text-blue-800 mb-2 flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-blue-600" />
+                    {smartSuggestions.message}
+                  </div>
                   <div className="flex gap-4 overflow-x-auto pb-2">
                     {smartSuggestions.accessories.map((acc: any) => (
                       <div key={acc.accessory_name} className="min-w-[120px] bg-white rounded-lg shadow p-2 flex flex-col items-center">
@@ -594,7 +655,10 @@ export default function WalmartSmartPredict() {
               {/* AI Recommendations */}
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-gray-800">Recommended for You</h2>
+                  <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    <Star className="w-5 h-5 text-yellow-500" />
+                    Recommended for You
+                  </h2>
                   <Button variant="ghost" size="sm" className="text-blue-600">
                     View All <ChevronRight className="w-4 h-4 ml-1" />
                   </Button>
@@ -630,7 +694,10 @@ export default function WalmartSmartPredict() {
 
               {/* Quick Reorder */}
               <div className="mb-6">
-                <h2 className="text-lg font-semibold text-gray-800 mb-4">Quick Reorder</h2>
+                <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-blue-600" />
+                  Quick Reorder
+                </h2>
                 <div className="grid grid-cols-2 gap-3">
                   {quickReorderItems.map((item) => (
                     <Card key={item.id} className="border-0 shadow-md">
@@ -659,8 +726,14 @@ export default function WalmartSmartPredict() {
               {/* Weekly Personalized Deals */}
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-gray-800">Your Weekly Deals</h2>
-                  <Badge className="bg-yellow-400 text-blue-900">Personalized</Badge>
+                  <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-green-600" />
+                    Your Weekly Deals
+                  </h2>
+                  <Badge className="bg-yellow-400 text-blue-900 flex items-center gap-1">
+                    <Award className="w-3 h-3" />
+                    Personalized
+                  </Badge>
                 </div>
                 <div className="space-y-3">
                   {weeklyDealsData.map((deal) => (
