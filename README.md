@@ -1,4 +1,4 @@
-# Walmart SmartPredict
+# SmartPredict
 
 **AI-powered personalized shopping assistant**
 
@@ -19,7 +19,7 @@ Interact with the SmartPredict Assistant using natural language—either by typi
 
 ## Overview
 
-Walmart SmartPredict is a full-stack, AI-powered shopping assistant web application that delivers a personalized, efficient, and interactive Walmart shopping experience. It leverages user data and advanced AI to provide smart product recommendations, restock predictions, shopping list suggestions, and conversational assistance—all in a modern, responsive UI.
+SmartPredict is a full-stack, AI-powered shopping assistant web application that delivers a personalized, efficient, and interactive Walmart shopping experience. It leverages user data and advanced AI to provide smart product recommendations, restock predictions, shopping list suggestions, and conversational assistance—all in a modern, responsive UI.
 
 ---
 
